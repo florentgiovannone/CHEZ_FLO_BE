@@ -23,3 +23,6 @@ bcrypt = Bcrypt(app)
 from controllers import users_controller
 
 app.register_blueprint(users_controller.router, url_prefix="/api")
+
+if __name__ == "__main__":
+    app.run(debug=True, port=4000)
