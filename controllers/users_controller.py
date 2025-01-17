@@ -139,26 +139,34 @@ def signup():
 @router.route("/login", methods=["POST"])
 def login():
     credentials_dictionary = request.json
+
     user = (
         db.session.query(UserModel)
         .filter_by(username=credentials_dictionary["username"])
         .first()
     )
-    if not user:
-        return jsonify({"error": "Login failled. Try again"})
-    if not user.validate_password(credentials_dictionary["password"]):
-        return jsonify({"error": "Login failled. Try again"})
+
+    if not user or not user.validate_password(credentials_dictionary["password"]):
+        return jsonify({"error": "Login failed. Try again"}), HTTPStatus.UNAUTHORIZED
 
     payload = {
         "exp": datetime.now(timezone.utc) + timedelta(days=1),
         "iat": datetime.now(timezone.utc),
-        "sub": user.id,
+        "sub": str(user.id),  # Ensure sub is a string
     }
-
     secret = SECRET
 
-    token = jwt.encode(payload, secret, algorithm="HS256")
-    return {"message": "Login successful.", "token": token}
+    try:
+        token = jwt.encode(payload, secret, algorithm="HS256")
+        print(f"Generated Token: {token}")
+        return jsonify({"message": "Login successful.", "token": token})
+
+    except Exception as e:
+        print(f"Error generating token: {e}")
+        return (
+            jsonify({"error": "Token generation failed"}),
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
 
 
 @router.route("/user", methods=["GET"])
