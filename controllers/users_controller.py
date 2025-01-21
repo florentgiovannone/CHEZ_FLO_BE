@@ -176,7 +176,7 @@ def get_current_user():
         user = db.session.query(UserModel).get(g.current_user.id)
         print(user_serializer.jsonify(user))
         return user_serializer.jsonify(user)
-    except ValidationError as e:
+    except ValidationError as e:      
         return {
             "errors": e.messages,
             "message": "Something went wrong",
@@ -211,6 +211,7 @@ def update_user(user_id):
         user.lastname = user_data.get("lastname", user.lastname)
         user.username = user_data.get("username", user.username)
         user.email = user_data.get("email", user.email)
+        user.image = user_data.get("image", user.image)
         db.session.commit()
         return user_serializer.jsonify(user)
 
