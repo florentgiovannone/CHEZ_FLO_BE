@@ -10,6 +10,7 @@ class UserModel(db.Model):
     email = db.Column(db.Text, nullable=False, unique=True)
     password_hash = db.Column(db.Text, nullable=True)
     password_confirmation = db.Column(db.Text, nullable=True)
+    image = db.Column(db.Text, nullable=True)
 
     @hybrid_property
     def password(self):

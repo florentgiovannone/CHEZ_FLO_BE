@@ -7,11 +7,9 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 
-
 @app.route("/hello", methods=["GET"])
 def hello():
     return "Hello World!"
-
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_URI
 
@@ -21,8 +19,7 @@ marshy = Marshmallow(app)
 bcrypt = Bcrypt(app)
 
 from controllers import users_controller
+from controllers import content_controller
 
 app.register_blueprint(users_controller.router, url_prefix="/api")
-
-if __name__ == "__main__":
-    app.run(debug=True, port=4000)
+app.register_blueprint(content_controller.router, url_prefix="/api")
