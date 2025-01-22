@@ -19,14 +19,12 @@ router = Blueprint("users", __name__)
 def signup():
     try:
         user_dictionary = request.json
-        # ! Checking if firstname was entered
         firstname_to_enter = user_dictionary.get("firstname")
         if not firstname_to_enter:
             return (
                 jsonify({"error": "you need to enter an firstname"}),
                 HTTPStatus.BAD_REQUEST,
             )
-        # ! Checking if lastname was entered
         lastname_to_enter = user_dictionary.get("lastname")
         if not lastname_to_enter:
             return (
@@ -34,7 +32,6 @@ def signup():
                 HTTPStatus.BAD_REQUEST,
             )
 
-        # ! Checking if email exist and if email was entered
         email_to_enter = user_dictionary.get("email")
         if not email_to_enter:
             return (
@@ -49,7 +46,6 @@ def signup():
         if email:
             return jsonify({"error": "The email already exist"}), HTTPStatus.BAD_REQUEST
 
-        # ! Checking if username exist and if username was entered
         username_to_enter = user_dictionary.get("username")
         if not username_to_enter:
             return (
@@ -72,7 +68,6 @@ def signup():
                 HTTPStatus.BAD_REQUEST,
             )
 
-        # ! Checking if password are the same and if it meets requirements
         password = user_dictionary.get("password")
         password_confirmation = user_dictionary.get("password_confirmation")
         if password != password_confirmation:
