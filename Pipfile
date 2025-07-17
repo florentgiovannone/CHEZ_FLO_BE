@@ -11,6 +11,7 @@ flask-marshmallow = "*"
 flask-cors = "*"
 psycopg2-binary = "*"
 marshmallow-sqlalchemy = "*"
+gunicorn = "*"
 
 [dev-packages]
 
