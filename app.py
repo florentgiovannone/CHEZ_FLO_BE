@@ -9,6 +9,11 @@ from flask_mail import Mail
 app = Flask(__name__)
 
 
+@app.route("/", methods=["GET"])
+def root():
+    return "Chez Flo API is running!"
+
+
 @app.route("/hello", methods=["GET"])
 def hello():
     return "Hello World!"
