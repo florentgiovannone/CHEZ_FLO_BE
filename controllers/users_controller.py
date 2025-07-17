@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from flask import Blueprint, request, jsonify, g
 from marshmallow.exceptions import ValidationError
-from app import db
+from app import db, app
 from models.users_model import UserModel
 from serializers.users_serializer import UserSerializer
 from datetime import datetime, timedelta, timezone
@@ -9,12 +9,14 @@ from config.environment import SECRET
 import jwt
 from middleware.secure_route import secure_route
 import re
-
+from flask_mail import Message
+from app import mail
 
 user_serializer = UserSerializer()
 router = Blueprint("users", __name__)
 
 
+# --- Signup section ---
 @router.route("/signup", methods=["POST"])
 def signup():
     try:
@@ -131,6 +133,7 @@ def signup():
         return {"error": "Something went very wrong"}
 
 
+# --- Login section ---
 @router.route("/login", methods=["POST"])
 def login():
     credentials_dictionary = request.json
@@ -164,6 +167,7 @@ def login():
         )
 
 
+# --- Get urrent User section ---
 @router.route("/user", methods=["GET"])
 @secure_route
 def get_current_user():
@@ -171,7 +175,7 @@ def get_current_user():
         user = db.session.query(UserModel).get(g.current_user.id)
         print(user_serializer.jsonify(user))
         return user_serializer.jsonify(user)
-    except ValidationError as e:      
+    except ValidationError as e:
         return {
             "errors": e.messages,
             "message": "Something went wrong",
@@ -180,6 +184,7 @@ def get_current_user():
         return {"message": "Something went very wrong"}
 
 
+# --- Display All Users section ---
 @router.route("/users", methods=["GET"])
 def get_current_users():
     user = db.session.query(UserModel).all()
@@ -187,7 +192,8 @@ def get_current_users():
     return user_serializer.jsonify(user, many=True)
 
 
-@router.route("/users/<int:user_id>", methods=["GET"])
+# --- Display Single User section ---
+@router.route("/user/<int:user_id>", methods=["GET"])
 def get_single_user(user_id):
     post = db.session.query(UserModel).get(user_id)
     if post is None:
@@ -195,7 +201,8 @@ def get_single_user(user_id):
     return user_serializer.jsonify(post)
 
 
-@router.route("/users/<int:user_id>", methods=["PUT"])
+# --- Update User section ---
+@router.route("/user/<int:user_id>", methods=["PUT"])
 def update_user(user_id):
     try:
         user = db.session.query(UserModel).get(user_id)
@@ -212,7 +219,7 @@ def update_user(user_id):
 
     except ValidationError as e:
         return {
-            "errors": e.message,
+            "errors": e.messages,
             "message": "Something went wrong",
         }, HTTPStatus.BAD_REQUEST
 
@@ -220,14 +227,8 @@ def update_user(user_id):
         return {"message": "Something went very wrong"}, HTTPStatus.BAD_REQUEST
 
 
-@router.route("/all_users", methods=["GET"])
-def get_all_user():
-    users = db.session.query(UserModel).all()
-    print(user_serializer.jsonify(users, many=True))
-    return user_serializer.jsonify(users, many=True)
-
-
-@router.route("/users/<int:user_id>", methods=["DELETE"])
+# --- Delete User section ---
+@router.route("/user/<int:user_id>", methods=["DELETE"])
 @secure_route
 def delete_user(user_id):
     user = UserModel.query.get(user_id)
@@ -236,3 +237,81 @@ def delete_user(user_id):
 
     user.remove()
     return jsonify({"error": "user deleted"})
+
+
+# --- Change Password section ---
+@router.route("/change-password", methods=["PUT"])
+@secure_route
+def change_password():
+    data = request.json
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+    confirm_password = data.get("confirm_password")
+
+    user = db.session.query(UserModel).get(g.current_user.id)
+
+    if not user or not user.validate_password(current_password):
+        return jsonify({"error": "Incorrect current password"}), HTTPStatus.UNAUTHORIZED
+
+    if new_password != confirm_password:
+        return jsonify({"error": "Passwords do not match"}), HTTPStatus.BAD_REQUEST
+
+    # Password validation (strength check)
+    if len(new_password) < 8:
+        return (
+            jsonify({"error": "Password must be at least 8 characters long"}),
+            HTTPStatus.BAD_REQUEST,
+        )
+    if not any(c.islower() for c in new_password):
+        return (
+            jsonify({"error": "Password must contain a lowercase letter"}),
+            HTTPStatus.BAD_REQUEST,
+        )
+    if not any(c.isupper() for c in new_password):
+        return (
+            jsonify({"error": "Password must contain an uppercase letter"}),
+            HTTPStatus.BAD_REQUEST,
+        )
+    if not any(c.isdigit() for c in new_password):
+        return (
+            jsonify({"error": "Password must contain a digit"}),
+            HTTPStatus.BAD_REQUEST,
+        )
+    if not any(c in "!@#$%&*" for c in new_password):
+        return (
+            jsonify({"error": "Password must contain a special character (!@#$%&*)"}),
+            HTTPStatus.BAD_REQUEST,
+        )
+
+    # ✅ Use the `password` setter, not `set_password`
+    user.password = new_password
+    db.session.commit()
+
+    return jsonify({"message": "Password changed successfully"}), HTTPStatus.OK
+
+
+@router.route("/send-confirmation", methods=["POST"])
+def send_confirmation():
+    data = request.json
+    email = data.get("email")
+    username = data.get("username")
+
+    # Validate email format
+    import re
+
+    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    if not email or not re.match(email_pattern, email):
+        return jsonify({"error": "Invalid email address"}), 400
+
+    try:
+        msg = Message(
+            subject="Confirmation Email",
+            sender=app.config["MAIL_USERNAME"],
+            recipients=[email],
+        )
+        msg.body = f"Hi {username}, thanks for registering to our website!"
+        mail.send(msg)
+        return jsonify({"message": "Confirmation email sent."}), 200
+    except Exception as e:
+        print(f"Email error: {e}")
+        return jsonify({"error": "Failed to send email"}), 500

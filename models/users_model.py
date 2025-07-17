@@ -1,6 +1,7 @@
 from sqlalchemy.ext.hybrid import hybrid_property
 from app import db, bcrypt
 
+
 class UserModel(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True, unique=True)
