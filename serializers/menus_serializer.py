@@ -1,9 +1,9 @@
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from models.carousel_model import CarouselModel
+from models.menus_model import MenusModel
 
 
-class CarouselSerializer(SQLAlchemyAutoSchema):
+class MenusSerializer(SQLAlchemyAutoSchema):
     class Meta:
-        model = CarouselModel
+        model = MenusModel
         load_instance = True
         include_fk = True

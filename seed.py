@@ -2,6 +2,8 @@ from app import app, db
 from models.users_model import UserModel
 from models.content_model import ContentModel
 from models.carousel_model import CarouselModel
+from models.menus_model import MenusModel
+from models.grid_model import GridModel
 
 with app.app_context():
 
@@ -17,31 +19,24 @@ with app.app_context():
             email="f.giovannone@me.com",
             password="Hello123",
             password_confirmation="Hello123",
-            image=""
+            image="",
+        )
+        Joe = UserModel(
+            firstname="Joe",
+            lastname="LeRogilo",
+            username="Joe",
+            email="j.le_rogilo@me.com",
+            password="Hello123",
+            password_confirmation="Hello123",
+            image="",
         )
 
         db.session.add(Florent)
-        db.session.commit()
+        db.session.add(Joe)
 
         Content = ContentModel(
             about_title="Welcome to Chez Flo",
-            about_text="A luxury brasserie where culinary artistry meets refined elegance. We craft a unique dining experience by blending classic techniques with modern innovation, using only the finest seasonal ingredients. Whether for an intimate evening or a celebratory feast, our impeccable service and sophisticated ambiance promise to elevate every moment. At Chez Flo, dining is more than a meal—it’s a journey of flavors, atmosphere, and unforgettable memories.",
-            breakfast_menus_text="Breakfast",
-            breakfast_menus_file="https://res.cloudinary.com/ded4jhx7i/image/upload/f_auto,q_auto/v1/Menus/breakfast",
-            lunch_menus_text="Lunch & Dinner",
-            lunch_menus_file="https://res.cloudinary.com/ded4jhx7i/image/upload/f_auto,q_auto/v1/Menus/all%20day",
-            dessert_menus_text="Desserts",
-            dessert_menus_file="https://res.cloudinary.com/ded4jhx7i/image/upload/f_auto,q_auto/v1/Menus/desserts",
-            winelist_menus_text="Winelist",
-            winelist_menus_file="https://res.cloudinary.com/ded4jhx7i/image/upload/f_auto,q_auto/v1/Menus/winelist",
-            cocktail_menus_text="Cocktail List",
-            cocktail_menus_file="https://res.cloudinary.com/ded4jhx7i/image/upload/f_auto,q_auto/cocktail%20menu",
-            image_one="https://images.unsplash.com/photo-1432462770865-65b70566d673?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=1950&amp;q=80",
-            image_two="https://images.unsplash.com/photo-1629367494173-c78a56567877?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=927&amp;q=80",
-            image_three="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=2940&amp;q=80",
-            image_four="https://images.unsplash.com/photo-1552960562-daf630e9278b?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=687&amp;q=80",
-            image_five="https://images.unsplash.com/photo-1540553016722-983e48a2cd10?ixlib=rb-1.2.1&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=800&amp;q=80",
-            image_six="https://docs.material-tailwind.com/img/team-3.jpg",
+            about_text="A luxury brasserie where culinary artistry meets refined elegance. We craft a unique dining experience by blending classic techniques with modern innovation, using only the finest seasonal ingredients. Whether for an intimate evening or a celebratory feast, our impeccable service and sophisticated ambiance promise to elevate every moment. At Chez Flo, dining is more than a meal—it's a journey of flavors, atmosphere, and unforgettable memories.",
             reservation_title="Make a reservation",
             reservation_text="We have outdoor seating available between noon and 4pm, which can be booked, or requested on arrival.",
             breakfast_timing_day_one="Monday-Friday",
@@ -72,7 +67,6 @@ with app.app_context():
             map="https://res.cloudinary.com/ded4jhx7i/image/upload/v1737487297/lpgcoxaeygtmizk1ac3z.png",
         )
         db.session.add(Content)
-        db.session.commit()
 
         Carousel_one = CarouselModel(
             carousel_url="https://media.houseandgarden.co.uk/photos/6548bac4ae920bdd9a97b4d2/16:9/w_2580,c_limit/Restaurant%20Interior%20(Credit%20Ben%20Carpenter).jpg",
@@ -90,7 +84,100 @@ with app.app_context():
         db.session.add(Carousel_one)
         db.session.add(Carousel_two)
         db.session.add(Carousel_three)
-        db.session.commit()
+
+        Breakfast_menus = MenusModel(
+            menus_type="breakfast",
+            menus_text="Breakfast",
+            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624683/REX_Breakfast_20241119V001_pwlgsy.pdf",
+            content=Content,
+        )
+        Lunch_menus = MenusModel(
+            menus_type="lunch",
+            menus_text="Lunch",
+            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624897/REX_Lunch_20250422V002_Spring_Menu_ovnzlt.pdf",
+            content=Content,
+        )
+        Dinner_menus = MenusModel(
+            menus_type="dinner",
+            menus_text="Dinner",
+            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624894/REX_Dinner_20250422V002_Spring_Menu_ei93vd.pdf",
+            content=Content,
+        )
+        Desserts_menus = MenusModel(
+            menus_type="desserts",
+            menus_text="Desserts",
+            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624762/desserts_lsacmw_jppkyk.pdf",
+            content=Content,
+        )
+        Winelist_menus = MenusModel(
+            menus_type="winelist",
+            menus_text="Winelist",
+            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624798/Swan-Wine-List_oevrzp.pdf",
+            content=Content,
+        )
+        Cocktail_menus = MenusModel(
+            menus_type="Cocktail",
+            menus_text="Cocktail",
+            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624674/The-Savoy-American-Bar_-American-Bar-Liquid-Moments_1_kjlreb.pdf",
+            content=Content,
+        )
+
+        db.session.add(Breakfast_menus)
+        db.session.add(Lunch_menus)
+        db.session.add(Dinner_menus)
+        db.session.add(Desserts_menus)
+        db.session.add(Winelist_menus)
+        db.session.add(Cocktail_menus)
+
+        Grid_one = GridModel(
+            grid_url="https://images.unsplash.com/photo-1432462770865-65b70566d673?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=1950&amp;q=80",
+            content=Content,
+            position=1,
+            width=1020,
+            height=680,
+        )
+        Grid_two = GridModel(
+            grid_url="https://images.unsplash.com/photo-1629367494173-c78a56567877?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=927&amp;q=80",
+            content=Content,
+            position=2,
+            width=446,
+            height=794,
+        )
+        Grid_three = GridModel(
+            grid_url="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=2940&amp;q=80",
+            content=Content,
+            position=3,
+            width=1020,
+            height=680,
+        )
+        Grid_four = GridModel(
+            grid_url="https://images.unsplash.com/photo-1552960562-daf630e9278b?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=687&amp;q=80",
+            content=Content,
+            position=4,
+            width=529,
+            height=794,
+        )
+        Grid_five = GridModel(
+            grid_url="https://images.unsplash.com/photo-1540553016722-983e48a2cd10?ixlib=rb-1.2.1&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=800&amp;q=80",
+            content=Content,
+            position=5,
+            width=1019,
+            height=680,
+        )
+        Grid_six = GridModel(
+            grid_url="https://docs.material-tailwind.com/img/team-3.jpg",
+            content=Content,
+            position=6,
+            width=400 ,
+            height=400,
+        )
+        
+        db.session.add(Grid_one)
+        db.session.add(Grid_two)
+        db.session.add(Grid_three)
+        db.session.add(Grid_four)
+        db.session.add(Grid_five)
+        db.session.add(Grid_six)
 
         db.session.commit()
         print("seeded!")

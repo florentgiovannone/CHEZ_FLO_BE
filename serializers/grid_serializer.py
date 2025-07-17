@@ -1,9 +1,9 @@
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
-from models.carousel_model import CarouselModel
+from models.grid_model import GridModel
 
 
-class CarouselSerializer(SQLAlchemyAutoSchema):
+class GridSerializer(SQLAlchemyAutoSchema):
     class Meta:
-        model = CarouselModel
+        model = GridModel
         load_instance = True
         include_fk = True
