@@ -1,12 +1,31 @@
-from flask import Flask
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_bcrypt import Bcrypt
 from config.environment import db_URI
 from flask_cors import CORS
 from flask_mail import Mail
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+
+@app.before_request
+def log_request_info():
+    logger.info(f"Request: {request.method} {request.url}")
+    logger.info(f"Headers: {dict(request.headers)}")
+    if request.is_json:
+        logger.info(f"Body: {request.get_json()}")
+
+
+@app.after_request
+def log_response_info(response):
+    logger.info(f"Response: {response.status_code}")
+    return response
 
 
 @app.route("/", methods=["GET"])
@@ -17,6 +36,24 @@ def root():
 @app.route("/hello", methods=["GET"])
 def hello():
     return "Hello World!"
+
+
+@app.errorhandler(404)
+def not_found(error):
+    logger.error(f"404 error: {error}")
+    return jsonify({"error": "Not found"}), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"500 error: {error}")
+    return jsonify({"error": "Internal server error"}), 500
+
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"Unhandled exception: {e}")
+    return jsonify({"error": "Something went wrong"}), 500
 
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_URI
