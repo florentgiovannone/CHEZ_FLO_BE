@@ -202,29 +202,56 @@ def get_single_user(user_id):
 
 
 # --- Update User section ---
+import os
+from werkzeug.utils import secure_filename
+from flask import current_app
+
+
 @router.route("/user/<int:user_id>", methods=["PUT"])
 def update_user(user_id):
     try:
         user = db.session.query(UserModel).get(user_id)
         if user is None:
-            return jsonify({"message": "user not found"}, HTTPStatus.NOT_FOUND)
-        user_data = request.json
-        user.firstname = user_data.get("firstname", user.firstname)
-        user.lastname = user_data.get("lastname", user.lastname)
-        user.username = user_data.get("username", user.username)
-        user.email = user_data.get("email", user.email)
-        user.image = user_data.get("image", user.image)
+            return jsonify({"message": "User not found"}), HTTPStatus.NOT_FOUND
+
+        # Handle file upload
+        if "image" in request.files:
+            image = request.files["image"]
+            if image.filename != "":
+                # Secure and save the file
+                filename = secure_filename(image.filename)
+                upload_folder = os.path.join(current_app.root_path, "static/uploads")
+
+                # Optional: delete the old file if it exists
+                if user.image:
+                    old_path = os.path.join(upload_folder, user.image)
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+
+                # Save new image
+                image.save(os.path.join(upload_folder, filename))
+                user.image = filename
+
+        # Update other user data (still in request.form, not JSON!)
+        user.firstname = request.form.get("firstname", user.firstname)
+        user.lastname = request.form.get("lastname", user.lastname)
+        user.username = request.form.get("username", user.username)
+        user.email = request.form.get("email", user.email)
+
         db.session.commit()
         return user_serializer.jsonify(user)
 
     except ValidationError as e:
         return {
             "errors": e.messages,
-            "message": "Something went wrong",
+            "message": "Validation failed",
         }, HTTPStatus.BAD_REQUEST
 
     except Exception as e:
-        return {"message": "Something went very wrong"}, HTTPStatus.BAD_REQUEST
+        print(e)
+        return {
+            "message": "Something went very wrong"
+        }, HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 # --- Delete User section ---
