@@ -1,6 +1,6 @@
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from app import app, db
 from models.menus_model import MenusModel
 
@@ -13,42 +13,55 @@ def apply_scheduled_updates():
     """Check for and apply scheduled menu updates that are due"""
     with app.app_context():
         try:
-            now = datetime.now()
+            # Use UTC for consistent timezone handling
+            now_utc = datetime.now(timezone.utc)
 
             # First, get all scheduled updates to show what we're tracking
             all_scheduled = MenusModel.query.filter(
                 MenusModel.scheduled_at.isnot(None), MenusModel.applied == False
             ).all()
 
-            # Find updates that are due
+            # Find updates that are due (comparing UTC times)
             due_scheduled = MenusModel.query.filter(
-                MenusModel.scheduled_at <= now,
+                MenusModel.scheduled_at
+                <= now_utc.replace(tzinfo=None),  # Database stores naive UTC
                 MenusModel.applied == False,
                 MenusModel.scheduled_at.isnot(None),
             ).all()
 
-            # Improved logging
+            # Improved logging with timezone info
             if all_scheduled:
-                logger.info(f"Tracking {len(all_scheduled)} pending scheduled updates:")
+                logger.info(f"�� Current time: {now_utc.isoformat()} UTC")
+                logger.info(
+                    f"📋 Tracking {len(all_scheduled)} pending scheduled updates:"
+                )
                 for menu in all_scheduled:
-                    time_diff = (menu.scheduled_at - now).total_seconds()
+                    # Database stores naive UTC datetime
+                    scheduled_utc = menu.scheduled_at.replace(tzinfo=timezone.utc)
+                    time_diff = (scheduled_utc - now_utc).total_seconds()
                     if time_diff > 0:
                         minutes_left = int(time_diff / 60)
+                        # Convert UTC to BST for display
+                        scheduled_bst = scheduled_utc.astimezone(
+                            timezone(timedelta(hours=1))
+                        )
                         logger.info(
-                            f"  - {menu.menus_type} menu: due in {minutes_left} minutes ({menu.scheduled_at})"
+                            f"  - {menu.menus_type} menu: due in {minutes_left} minutes ({scheduled_bst.strftime('%H:%M BST')} / {scheduled_utc.strftime('%H:%M UTC')})"
                         )
                     else:
                         logger.info(
                             f"  - {menu.menus_type} menu: DUE NOW ({menu.scheduled_at})"
                         )
             else:
-                logger.info("No scheduled updates pending")
+                logger.info("📋 No scheduled updates pending")
 
             if not due_scheduled:
-                logger.info("No scheduled updates due for application at this time")
+                logger.info("⏰ No scheduled updates due for application at this time")
                 return
 
-            logger.info(f"Found {len(due_scheduled)} scheduled updates ready to apply")
+            logger.info(
+                f"🚀 Found {len(due_scheduled)} scheduled updates ready to apply"
+            )
 
             for menu in due_scheduled:
                 try:

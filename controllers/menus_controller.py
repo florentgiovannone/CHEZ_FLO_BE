@@ -5,7 +5,7 @@ from app import db
 from models import ContentModel, MenusModel
 from serializers.menus_serializer import MenusSerializer
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 menus_serializer = MenusSerializer()
 router = Blueprint("menus", __name__)
@@ -70,7 +70,8 @@ def update_single_menu(content_id, menu_type):
         if not menu:
             return jsonify({"message": "Menu not found"}), HTTPStatus.NOT_FOUND
 
-        now = datetime.now()
+        # Use UTC for consistent timezone handling
+        now_utc = datetime.now(timezone.utc)
         scheduled_at = data.get("scheduled_at")
 
         # Case 1: Scheduled update
@@ -80,28 +81,34 @@ def update_single_menu(content_id, menu_type):
                 if len(scheduled_at) == 16:  # "2025-07-24T16:04" format
                     scheduled_at += ":00"  # Make it "2025-07-24T16:04:00"
 
-                parsed_time = datetime.fromisoformat(scheduled_at)
+                # Parse the time and assume it's in BST (UTC+1)
+                parsed_time_naive = datetime.fromisoformat(scheduled_at)
+
+                # Assume input time is in BST (UTC+1) and convert to UTC
+                bst_timezone = timezone(timedelta(hours=1))  # BST = UTC+1
+                parsed_time_bst = parsed_time_naive.replace(tzinfo=bst_timezone)
+                parsed_time_utc = parsed_time_bst.astimezone(timezone.utc)
 
                 # Add some buffer time to avoid immediate execution due to processing delay
                 buffer_seconds = 30
-                min_future_time = now.replace(second=0, microsecond=0) + timedelta(
-                    seconds=buffer_seconds
-                )
+                min_future_time_utc = now_utc + timedelta(seconds=buffer_seconds)
 
-                # Check if scheduled time is sufficiently in the future
-                if parsed_time > min_future_time:
+                # Check if scheduled time is sufficiently in the future (in UTC)
+                if parsed_time_utc > min_future_time_utc:
                     menu.scheduled_text = data.get("menus_text")
                     menu.scheduled_url = data.get("menus_url")
-                    menu.scheduled_at = parsed_time
+                    # Store as naive datetime in UTC (Heroku Postgres stores as UTC)
+                    menu.scheduled_at = parsed_time_utc.replace(tzinfo=None)
                     menu.applied = False
                     db.session.commit()
                     return (
                         jsonify(
                             {
                                 "message": "Menu update scheduled",
-                                "scheduled_for": parsed_time.isoformat(),
-                                "current_time": now.isoformat(),
-                                "minimum_schedule_time": min_future_time.isoformat(),
+                                "scheduled_for_bst": parsed_time_bst.isoformat(),
+                                "scheduled_for_utc": parsed_time_utc.isoformat(),
+                                "current_time_utc": now_utc.isoformat(),
+                                "minimum_schedule_time_utc": min_future_time_utc.isoformat(),
                             }
                         ),
                         HTTPStatus.OK,
@@ -112,9 +119,10 @@ def update_single_menu(content_id, menu_type):
                         jsonify(
                             {
                                 "message": "Scheduled time must be at least 30 seconds in the future",
-                                "scheduled_time": parsed_time.isoformat(),
-                                "current_time": now.isoformat(),
-                                "minimum_schedule_time": min_future_time.isoformat(),
+                                "scheduled_time_bst": parsed_time_bst.isoformat(),
+                                "scheduled_time_utc": parsed_time_utc.isoformat(),
+                                "current_time_utc": now_utc.isoformat(),
+                                "minimum_schedule_time_utc": min_future_time_utc.isoformat(),
                             }
                         ),
                         HTTPStatus.BAD_REQUEST,
@@ -127,7 +135,7 @@ def update_single_menu(content_id, menu_type):
                             "message": "Invalid date format",
                             "error": str(e),
                             "received": scheduled_at,
-                            "expected_format": "ISO format like 2025-07-24T17:30:00 or 2025-07-24T17:30",
+                            "expected_format": "BST time like 2025-07-24T17:30:00 or 2025-07-24T17:30",
                         }
                     ),
                     HTTPStatus.BAD_REQUEST,
@@ -187,7 +195,7 @@ def delete_menu(content_id, menu_type):
 def get_scheduled_updates(content_id):
     """Check pending scheduled updates for debugging purposes"""
     try:
-        now = datetime.now()
+        now_utc = datetime.now(timezone.utc)
 
         # Get all scheduled updates for this content
         scheduled_menus = MenusModel.query.filter(
@@ -198,6 +206,12 @@ def get_scheduled_updates(content_id):
 
         scheduled_updates = []
         for menu in scheduled_menus:
+            # Database stores naive UTC datetime
+            scheduled_utc = menu.scheduled_at.replace(tzinfo=timezone.utc)
+            # Convert to BST for display
+            bst_timezone = timezone(timedelta(hours=1))
+            scheduled_bst = scheduled_utc.astimezone(bst_timezone)
+
             scheduled_updates.append(
                 {
                     "id": menu.id,
@@ -206,11 +220,15 @@ def get_scheduled_updates(content_id):
                     "current_url": menu.menus_url,
                     "scheduled_text": menu.scheduled_text,
                     "scheduled_url": menu.scheduled_url,
-                    "scheduled_at": (
-                        menu.scheduled_at.isoformat() if menu.scheduled_at else None
-                    ),
-                    "is_due": menu.scheduled_at <= now if menu.scheduled_at else False,
+                    "scheduled_at_utc": scheduled_utc.isoformat(),
+                    "scheduled_at_bst": scheduled_bst.isoformat(),
+                    "is_due": scheduled_utc <= now_utc,
                     "applied": menu.applied,
+                    "minutes_until_due": (
+                        int((scheduled_utc - now_utc).total_seconds() / 60)
+                        if scheduled_utc > now_utc
+                        else 0
+                    ),
                 }
             )
 
@@ -218,7 +236,10 @@ def get_scheduled_updates(content_id):
             jsonify(
                 {
                     "message": f"Found {len(scheduled_updates)} scheduled updates",
-                    "current_time": now.isoformat(),
+                    "current_time_utc": now_utc.isoformat(),
+                    "current_time_bst": now_utc.astimezone(
+                        timezone(timedelta(hours=1))
+                    ).isoformat(),
                     "scheduled_updates": scheduled_updates,
                 }
             ),
@@ -237,12 +258,13 @@ def get_scheduled_updates(content_id):
 def apply_scheduled_updates_manually(content_id):
     """Manually trigger the application of scheduled updates for testing"""
     try:
-        now = datetime.now()
+        now_utc = datetime.now(timezone.utc)
 
-        # Find scheduled updates that are due for this content
+        # Find scheduled updates that are due for this content (using UTC)
         scheduled_menus = MenusModel.query.filter(
             MenusModel.content_id == content_id,
-            MenusModel.scheduled_at <= now,
+            MenusModel.scheduled_at
+            <= now_utc.replace(tzinfo=None),  # Database stores naive UTC
             MenusModel.applied == False,
             MenusModel.scheduled_at.isnot(None),
         ).all()
@@ -252,7 +274,10 @@ def apply_scheduled_updates_manually(content_id):
                 jsonify(
                     {
                         "message": "No scheduled updates due for this content",
-                        "current_time": now.isoformat(),
+                        "current_time_utc": now_utc.isoformat(),
+                        "current_time_bst": now_utc.astimezone(
+                            timezone(timedelta(hours=1))
+                        ).isoformat(),
                     }
                 ),
                 HTTPStatus.OK,
