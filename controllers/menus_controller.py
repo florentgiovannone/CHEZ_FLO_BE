@@ -81,24 +81,26 @@ def update_single_menu(content_id, menu_type):
                 if len(scheduled_at) == 16:  # "2025-07-24T16:04" format
                     scheduled_at += ":00"  # Make it "2025-07-24T16:04:00"
 
-                # Parse the time and assume it's in BST (UTC+1)
-                parsed_time_naive = datetime.fromisoformat(scheduled_at)
+                # Parse the time as BST (keep it as BST, don't convert to UTC)
+                parsed_time_bst = datetime.fromisoformat(scheduled_at)
 
-                # Assume input time is in BST (UTC+1) and convert to UTC
-                bst_timezone = timezone(timedelta(hours=1))  # BST = UTC+1
-                parsed_time_bst = parsed_time_naive.replace(tzinfo=bst_timezone)
-                parsed_time_utc = parsed_time_bst.astimezone(timezone.utc)
+                # For comparison, convert current UTC time to BST
+                now_bst = now_utc.astimezone(
+                    timezone(timedelta(hours=1))
+                )  # Convert UTC to BST
 
                 # Add some buffer time to avoid immediate execution due to processing delay
                 buffer_seconds = 30
-                min_future_time_utc = now_utc + timedelta(seconds=buffer_seconds)
+                min_future_time_bst = now_bst.replace(tzinfo=None) + timedelta(
+                    seconds=buffer_seconds
+                )
 
-                # Check if scheduled time is sufficiently in the future (in UTC)
-                if parsed_time_utc > min_future_time_utc:
+                # Check if scheduled time is sufficiently in the future (both in BST)
+                if parsed_time_bst > min_future_time_bst:
                     menu.scheduled_text = data.get("menus_text")
                     menu.scheduled_url = data.get("menus_url")
-                    # Store as naive datetime in UTC (Heroku Postgres stores as UTC)
-                    menu.scheduled_at = parsed_time_utc.replace(tzinfo=None)
+                    # Store as naive BST datetime
+                    menu.scheduled_at = parsed_time_bst
                     menu.applied = False
                     db.session.commit()
                     return (
@@ -106,9 +108,10 @@ def update_single_menu(content_id, menu_type):
                             {
                                 "message": "Menu update scheduled",
                                 "scheduled_for_bst": parsed_time_bst.isoformat(),
-                                "scheduled_for_utc": parsed_time_utc.isoformat(),
-                                "current_time_utc": now_utc.isoformat(),
-                                "minimum_schedule_time_utc": min_future_time_utc.isoformat(),
+                                "current_time_bst": now_bst.replace(
+                                    tzinfo=None
+                                ).isoformat(),
+                                "minimum_schedule_time_bst": min_future_time_bst.isoformat(),
                             }
                         ),
                         HTTPStatus.OK,
@@ -120,9 +123,10 @@ def update_single_menu(content_id, menu_type):
                             {
                                 "message": "Scheduled time must be at least 30 seconds in the future",
                                 "scheduled_time_bst": parsed_time_bst.isoformat(),
-                                "scheduled_time_utc": parsed_time_utc.isoformat(),
-                                "current_time_utc": now_utc.isoformat(),
-                                "minimum_schedule_time_utc": min_future_time_utc.isoformat(),
+                                "current_time_bst": now_bst.replace(
+                                    tzinfo=None
+                                ).isoformat(),
+                                "minimum_schedule_time_bst": min_future_time_bst.isoformat(),
                             }
                         ),
                         HTTPStatus.BAD_REQUEST,
@@ -196,6 +200,8 @@ def get_scheduled_updates(content_id):
     """Check pending scheduled updates for debugging purposes"""
     try:
         now_utc = datetime.now(timezone.utc)
+        now_bst = now_utc.astimezone(timezone(timedelta(hours=1)))  # Convert UTC to BST
+        now_bst_naive = now_bst.replace(tzinfo=None)  # Remove timezone for comparison
 
         # Get all scheduled updates for this content
         scheduled_menus = MenusModel.query.filter(
@@ -206,11 +212,8 @@ def get_scheduled_updates(content_id):
 
         scheduled_updates = []
         for menu in scheduled_menus:
-            # Database stores naive UTC datetime
-            scheduled_utc = menu.scheduled_at.replace(tzinfo=timezone.utc)
-            # Convert to BST for display
-            bst_timezone = timezone(timedelta(hours=1))
-            scheduled_bst = scheduled_utc.astimezone(bst_timezone)
+            # Database stores naive BST datetime
+            scheduled_bst = menu.scheduled_at
 
             scheduled_updates.append(
                 {
@@ -220,13 +223,12 @@ def get_scheduled_updates(content_id):
                     "current_url": menu.menus_url,
                     "scheduled_text": menu.scheduled_text,
                     "scheduled_url": menu.scheduled_url,
-                    "scheduled_at_utc": scheduled_utc.isoformat(),
                     "scheduled_at_bst": scheduled_bst.isoformat(),
-                    "is_due": scheduled_utc <= now_utc,
+                    "is_due": scheduled_bst <= now_bst_naive,
                     "applied": menu.applied,
                     "minutes_until_due": (
-                        int((scheduled_utc - now_utc).total_seconds() / 60)
-                        if scheduled_utc > now_utc
+                        int((scheduled_bst - now_bst_naive).total_seconds() / 60)
+                        if scheduled_bst > now_bst_naive
                         else 0
                     ),
                 }
@@ -236,10 +238,8 @@ def get_scheduled_updates(content_id):
             jsonify(
                 {
                     "message": f"Found {len(scheduled_updates)} scheduled updates",
+                    "current_time_bst": now_bst_naive.isoformat(),
                     "current_time_utc": now_utc.isoformat(),
-                    "current_time_bst": now_utc.astimezone(
-                        timezone(timedelta(hours=1))
-                    ).isoformat(),
                     "scheduled_updates": scheduled_updates,
                 }
             ),
@@ -259,12 +259,13 @@ def apply_scheduled_updates_manually(content_id):
     """Manually trigger the application of scheduled updates for testing"""
     try:
         now_utc = datetime.now(timezone.utc)
+        now_bst = now_utc.astimezone(timezone(timedelta(hours=1)))  # Convert UTC to BST
+        now_bst_naive = now_bst.replace(tzinfo=None)  # Remove timezone for comparison
 
-        # Find scheduled updates that are due for this content (using UTC)
+        # Find scheduled updates that are due for this content (using BST)
         scheduled_menus = MenusModel.query.filter(
             MenusModel.content_id == content_id,
-            MenusModel.scheduled_at
-            <= now_utc.replace(tzinfo=None),  # Database stores naive UTC
+            MenusModel.scheduled_at <= now_bst_naive,  # Database stores naive BST
             MenusModel.applied == False,
             MenusModel.scheduled_at.isnot(None),
         ).all()
@@ -274,10 +275,8 @@ def apply_scheduled_updates_manually(content_id):
                 jsonify(
                     {
                         "message": "No scheduled updates due for this content",
+                        "current_time_bst": now_bst_naive.isoformat(),
                         "current_time_utc": now_utc.isoformat(),
-                        "current_time_bst": now_utc.astimezone(
-                            timezone(timedelta(hours=1))
-                        ).isoformat(),
                     }
                 ),
                 HTTPStatus.OK,
