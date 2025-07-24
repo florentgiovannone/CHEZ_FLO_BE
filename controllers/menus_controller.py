@@ -5,7 +5,7 @@ from app import db
 from models import ContentModel, MenusModel
 from serializers.menus_serializer import MenusSerializer
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
+from datetime import datetime, timedelta
 
 menus_serializer = MenusSerializer()
 router = Blueprint("menus", __name__)
@@ -75,16 +75,65 @@ def update_single_menu(content_id, menu_type):
 
         # Case 1: Scheduled update
         if scheduled_at:
-            parsed_time = datetime.fromisoformat(scheduled_at)
-            if parsed_time > now:
-                menu.scheduled_text = data.get("menus_text")
-                menu.scheduled_url = data.get("menus_url")
-                menu.scheduled_at = parsed_time
-                menu.applied = False
-                db.session.commit()
-                return jsonify({"message": "Menu update scheduled"}), HTTPStatus.OK
+            try:
+                # Handle incomplete time formats by adding seconds if missing
+                if len(scheduled_at) == 16:  # "2025-07-24T16:04" format
+                    scheduled_at += ":00"  # Make it "2025-07-24T16:04:00"
 
-        # Case 2: Immediate update
+                parsed_time = datetime.fromisoformat(scheduled_at)
+
+                # Add some buffer time to avoid immediate execution due to processing delay
+                buffer_seconds = 30
+                min_future_time = now.replace(second=0, microsecond=0) + timedelta(
+                    seconds=buffer_seconds
+                )
+
+                # Check if scheduled time is sufficiently in the future
+                if parsed_time > min_future_time:
+                    menu.scheduled_text = data.get("menus_text")
+                    menu.scheduled_url = data.get("menus_url")
+                    menu.scheduled_at = parsed_time
+                    menu.applied = False
+                    db.session.commit()
+                    return (
+                        jsonify(
+                            {
+                                "message": "Menu update scheduled",
+                                "scheduled_for": parsed_time.isoformat(),
+                                "current_time": now.isoformat(),
+                                "minimum_schedule_time": min_future_time.isoformat(),
+                            }
+                        ),
+                        HTTPStatus.OK,
+                    )
+                else:
+                    # Scheduled time is too close to now or in the past
+                    return (
+                        jsonify(
+                            {
+                                "message": "Scheduled time must be at least 30 seconds in the future",
+                                "scheduled_time": parsed_time.isoformat(),
+                                "current_time": now.isoformat(),
+                                "minimum_schedule_time": min_future_time.isoformat(),
+                            }
+                        ),
+                        HTTPStatus.BAD_REQUEST,
+                    )
+
+            except ValueError as e:
+                return (
+                    jsonify(
+                        {
+                            "message": "Invalid date format",
+                            "error": str(e),
+                            "received": scheduled_at,
+                            "expected_format": "ISO format like 2025-07-24T17:30:00 or 2025-07-24T17:30",
+                        }
+                    ),
+                    HTTPStatus.BAD_REQUEST,
+                )
+
+        # Case 2: Immediate update (only if no scheduled_at provided)
         if "menus_text" in data:
             menu.menus_text = data["menus_text"]
         if "menus_url" in data:
