@@ -77,6 +77,10 @@ def update_single_menu(content_id, menu_type):
         # Case 1: Scheduled update
         if scheduled_at:
             try:
+                # Handle incomplete time formats by adding seconds if missing
+                if len(scheduled_at) == 16:  # "2025-07-24T16:04" format
+                    scheduled_at += ":00"  # Make it "2025-07-24T16:04:00"
+
                 # Parse the time as BST (keep it as BST, don't convert to UTC)
                 parsed_time_bst = datetime.fromisoformat(scheduled_at)
 
