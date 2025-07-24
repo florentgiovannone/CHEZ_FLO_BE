@@ -13,6 +13,9 @@ flask-mail = "*"
 psycopg2-binary = "*"
 marshmallow-sqlalchemy = "*"
 PyJWT = "*"
+# Optional: For Celery-based scheduling
+celery = "*"
+redis = "*"
 
 [dev-packages]
 

@@ -5,6 +5,7 @@ from app import db
 from models import ContentModel, MenusModel
 from serializers.menus_serializer import MenusSerializer
 from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
 
 menus_serializer = MenusSerializer()
 router = Blueprint("menus", __name__)
@@ -61,33 +62,47 @@ def update_single_menu(content_id, menu_type):
     try:
         data = request.get_json()
         if not data:
-            return (
-                jsonify({"message": "Invalid data format. Request body is required"}),
-                HTTPStatus.BAD_REQUEST,
-            )
+            return jsonify({"message": "Invalid data"}), HTTPStatus.BAD_REQUEST
 
         menu = MenusModel.query.filter_by(
             content_id=content_id, menus_type=menu_type
         ).first()
         if not menu:
-            return (
-                jsonify({"message": "Menu not found"}),
-                HTTPStatus.NOT_FOUND,
-            )
+            return jsonify({"message": "Menu not found"}), HTTPStatus.NOT_FOUND
 
+        now = datetime.now()
+        scheduled_at = data.get("scheduled_at")
+
+        # Case 1: Scheduled update
+        if scheduled_at:
+            parsed_time = datetime.fromisoformat(scheduled_at)
+            if parsed_time > now:
+                menu.scheduled_text = data.get("menus_text")
+                menu.scheduled_url = data.get("menus_url")
+                menu.scheduled_at = parsed_time
+                menu.applied = False
+                db.session.commit()
+                return jsonify({"message": "Menu update scheduled"}), HTTPStatus.OK
+
+        # Case 2: Immediate update
         if "menus_text" in data:
             menu.menus_text = data["menus_text"]
-            menu.menus_type = data["menus_text"].lower()
         if "menus_url" in data:
             menu.menus_url = data["menus_url"]
 
+        # Clear any old scheduled data
+        menu.scheduled_text = None
+        menu.scheduled_url = None
+        menu.scheduled_at = None
+        menu.applied = True
+
         db.session.commit()
-        return jsonify(menus_serializer.dump(menu)), HTTPStatus.OK
+        return jsonify({"message": "Menu updated immediately"}), HTTPStatus.OK
 
     except Exception as e:
         db.session.rollback()
         return (
-            jsonify({"message": "Something went wrong", "error": str(e)}),
+            jsonify({"message": "Error", "error": str(e)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
@@ -116,5 +131,123 @@ def delete_menu(content_id, menu_type):
             jsonify({"message": "Something went wrong", "error": str(e)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
-    
-    
+
+
+# --- Check Scheduled Updates ---
+@router.route("/content/<int:content_id>/menus/scheduled", methods=["GET"])
+def get_scheduled_updates(content_id):
+    """Check pending scheduled updates for debugging purposes"""
+    try:
+        now = datetime.now()
+
+        # Get all scheduled updates for this content
+        scheduled_menus = MenusModel.query.filter(
+            MenusModel.content_id == content_id,
+            MenusModel.scheduled_at.isnot(None),
+            MenusModel.applied == False,
+        ).all()
+
+        scheduled_updates = []
+        for menu in scheduled_menus:
+            scheduled_updates.append(
+                {
+                    "id": menu.id,
+                    "menus_type": menu.menus_type,
+                    "current_text": menu.menus_text,
+                    "current_url": menu.menus_url,
+                    "scheduled_text": menu.scheduled_text,
+                    "scheduled_url": menu.scheduled_url,
+                    "scheduled_at": (
+                        menu.scheduled_at.isoformat() if menu.scheduled_at else None
+                    ),
+                    "is_due": menu.scheduled_at <= now if menu.scheduled_at else False,
+                    "applied": menu.applied,
+                }
+            )
+
+        return (
+            jsonify(
+                {
+                    "message": f"Found {len(scheduled_updates)} scheduled updates",
+                    "current_time": now.isoformat(),
+                    "scheduled_updates": scheduled_updates,
+                }
+            ),
+            HTTPStatus.OK,
+        )
+
+    except Exception as e:
+        return (
+            jsonify({"message": "Error checking scheduled updates", "error": str(e)}),
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
+
+# --- Manual trigger for scheduled updates (for testing) ---
+@router.route("/content/<int:content_id>/menus/apply-scheduled", methods=["POST"])
+def apply_scheduled_updates_manually(content_id):
+    """Manually trigger the application of scheduled updates for testing"""
+    try:
+        now = datetime.now()
+
+        # Find scheduled updates that are due for this content
+        scheduled_menus = MenusModel.query.filter(
+            MenusModel.content_id == content_id,
+            MenusModel.scheduled_at <= now,
+            MenusModel.applied == False,
+            MenusModel.scheduled_at.isnot(None),
+        ).all()
+
+        if not scheduled_menus:
+            return (
+                jsonify(
+                    {
+                        "message": "No scheduled updates due for this content",
+                        "current_time": now.isoformat(),
+                    }
+                ),
+                HTTPStatus.OK,
+            )
+
+        applied_updates = []
+
+        for menu in scheduled_menus:
+            # Apply the scheduled changes
+            if menu.scheduled_text:
+                menu.menus_text = menu.scheduled_text
+            if menu.scheduled_url:
+                menu.menus_url = menu.scheduled_url
+
+            applied_updates.append(
+                {
+                    "id": menu.id,
+                    "menus_type": menu.menus_type,
+                    "new_text": menu.menus_text,
+                    "new_url": menu.menus_url,
+                }
+            )
+
+            # Clear scheduled fields and mark as applied
+            menu.scheduled_text = None
+            menu.scheduled_url = None
+            menu.scheduled_at = None
+            menu.applied = True
+
+        db.session.commit()
+
+        return (
+            jsonify(
+                {
+                    "message": f"Successfully applied {len(applied_updates)} scheduled updates",
+                    "applied_updates": applied_updates,
+                }
+            ),
+            HTTPStatus.OK,
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        return (
+            jsonify({"message": "Error applying scheduled updates", "error": str(e)}),
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
