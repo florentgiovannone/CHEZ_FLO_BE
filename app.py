@@ -1,11 +1,11 @@
 from flask import Flask, jsonify, request
+import logging
+from flask_cors import CORS
+from flask_mail import Mail
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_bcrypt import Bcrypt
 from config.environment import db_URI
-from flask_cors import CORS
-from flask_mail import Mail
-import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

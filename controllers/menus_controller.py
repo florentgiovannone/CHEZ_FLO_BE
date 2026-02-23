@@ -1,11 +1,15 @@
+"""Menu controller for managing restaurant menu updates and scheduling."""
+
 from http import HTTPStatus
+from datetime import datetime, timedelta, timezone
+
 from flask import Blueprint, request, jsonify
 from marshmallow.exceptions import ValidationError
-from app import db
-from models import ContentModel, MenusModel
-from serializers.menus_serializer import MenusSerializer
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime, timedelta, timezone
+
+from app import db
+from models import MenusModel
+from serializers.menus_serializer import MenusSerializer
 
 menus_serializer = MenusSerializer()
 router = Blueprint("menus", __name__)
