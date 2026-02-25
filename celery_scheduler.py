@@ -1,6 +1,10 @@
-from celery import Celery
+"""
+Celery scheduler for applying scheduled menu updates
+"""
 from datetime import datetime
 import logging
+from celery import Celery
+from sqlalchemy.exc import SQLAlchemyError
 from app import app, db
 from models.menus_model import MenusModel
 
@@ -33,15 +37,14 @@ def apply_scheduled_updates():
             # Find all scheduled updates that are due and not yet applied
             scheduled_menus = MenusModel.query.filter(
                 MenusModel.scheduled_at <= now,
-                MenusModel.applied == False,
+                MenusModel.applied.is_(False),
                 MenusModel.scheduled_at.isnot(None),
             ).all()
 
             if not scheduled_menus:
                 logger.info("No scheduled updates to apply")
-                return "No updates to apply"
 
-            logger.info(f"Found {len(scheduled_menus)} scheduled updates to apply")
+            logger.info("Found %s scheduled updates to apply", len(scheduled_menus))
 
             for menu in scheduled_menus:
                 try:
@@ -58,24 +61,23 @@ def apply_scheduled_updates():
                     menu.applied = True
 
                     logger.info(
-                        f"Applied scheduled update for menu {menu.id} ({menu.menus_type})"
+                        "Applied scheduled update for menu %s (%s)", menu.id, menu.menus_type
                     )
 
-                except Exception as e:
+                except SQLAlchemyError as e:
                     logger.error(
-                        f"Error applying scheduled update for menu {menu.id}: {str(e)}"
+                        "Error applying scheduled update for menu %s: %s", menu.id, str(e)
                     )
                     continue
 
             # Commit all changes
             db.session.commit()
             logger.info("All scheduled updates applied successfully")
-            return f"Applied {len(scheduled_menus)} updates"
 
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error in apply_scheduled_updates: {str(e)}")
-            return f"Error: {str(e)}"
+            logger.error("Error in apply_scheduled_updates: %s", str(e))
+            raise
 
 
 if __name__ == "__main__":

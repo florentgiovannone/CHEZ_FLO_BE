@@ -1,10 +1,12 @@
+"""User serializer module defining the UserSerializer for user authentication and management."""
+import re
 from marshmallow import fields, ValidationError
 from app import marshy
 from models.users_model import UserModel
-import re
 
 
 def validate_password(password):
+    """Validate the password against the stored hash."""
     spec_chart = ["!", "@", "#", "$", "%", "&", "*"]
     if len(password) < 8:
         raise ValidationError("Password needs to be a minimum of 8 characters long")
@@ -21,9 +23,14 @@ def validate_password(password):
 
 
 class UserSerializer(marshy.SQLAlchemyAutoSchema):
+    """Serializer for the UserModel."""
+
     password = fields.String(required=True, validate=validate_password)
 
     class Meta:
+        """Meta class for the UserSerializer."""
+
         model = UserModel
         load_instance = True
         load_only = ("password", "password_hash", "password_confirmation")
+        dump_only = ("role",)

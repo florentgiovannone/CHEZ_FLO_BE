@@ -10,3 +10,5 @@ marshmallow-sqlalchemy==1.4.2
 psycopg2-binary==2.9.10
 pyjwt==2.10.1
 sqlalchemy==2.0.41
+flask-talisman==1.1.0
+flask-limiter==3.12

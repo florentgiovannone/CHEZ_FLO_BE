@@ -14,9 +14,10 @@ psycopg2-binary = "*"
 marshmallow-sqlalchemy = "*"
 PyJWT = "*"
 gunicorn = "*"
-# Optional: For Celery-based scheduling
 celery = "*"
 redis = "*"
+flask-talisman = "*"
+flask-limiter = "*"
 
 [dev-packages]
 

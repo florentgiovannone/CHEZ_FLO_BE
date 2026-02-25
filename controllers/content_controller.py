@@ -241,7 +241,7 @@ def update_reservation(content_id):
 
         if "lunch_timing_hours_two" in data:
             content.lunch_timing_hours_two = data["lunch_timing_hours_two"]
-            
+
         if "dinner_timing_day_one" in data:
             content.dinner_timing_day_one = data["dinner_timing_day_one"]
 
@@ -259,7 +259,6 @@ def update_reservation(content_id):
 
         if "email" in data:
             content.email = data["email"]
-            
 
         db.session.commit()
         return content_serializer.jsonify(content)

@@ -1,16 +1,18 @@
+"""Users controller for managing user authentication, registration, and profile updates."""
+
+import re
+from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
+from smtplib import SMTPException
+import jwt
 from flask import Blueprint, request, jsonify, g
+from flask_mail import Message
 from marshmallow.exceptions import ValidationError
-from app import db, app
+from app import db, app, mail, limiter
+from config.environment import SECRET
+from middleware.secure_route import secure_route, role_required
 from models.users_model import UserModel
 from serializers.users_serializer import UserSerializer
-from datetime import datetime, timedelta, timezone
-from config.environment import SECRET
-import jwt
-from middleware.secure_route import secure_route
-import re
-from flask_mail import Message
-from app import mail
 
 user_serializer = UserSerializer()
 router = Blueprint("users", __name__)
@@ -18,7 +20,9 @@ router = Blueprint("users", __name__)
 
 # --- Signup section ---
 @router.route("/signup", methods=["POST"])
+@limiter.limit("3 per hour")
 def signup():
+    """Handle user registration by validating input and creating a new user."""
     try:
         user_dictionary = request.json
         firstname_to_enter = user_dictionary.get("firstname")
@@ -117,10 +121,11 @@ def signup():
             )
         else:
             user_model = user_serializer.load(user_dictionary)
+            user_model.role = "user"
             db.session.add(user_model)
             db.session.commit()
             return user_serializer.jsonify(user_model)
-    except ValidationError as e:
+    except ValidationError as _:
         return (
             jsonify(
                 {
@@ -129,14 +134,24 @@ def signup():
             ),
             HTTPStatus.BAD_REQUEST,
         )
-    except Exception as e:
+    except SMTPException as _:
         return {"error": "Something went very wrong"}
 
 
 # --- Login section ---
 @router.route("/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
-    credentials_dictionary = request.json
+    """Authenticate a user and return a JWT token."""
+    try:
+        credentials_dictionary = request.json
+    except ValidationError as _:
+        return {
+            "errors": _.messages,
+            "message": "Something went wrong",
+        }, HTTPStatus.BAD_REQUEST
+    except SMTPException as _:
+        return {"error": "Something went very wrong"}, HTTPStatus.BAD_REQUEST
 
     user = (
         db.session.query(UserModel)
@@ -150,51 +165,53 @@ def login():
     payload = {
         "exp": datetime.now(timezone.utc) + timedelta(days=1),
         "iat": datetime.now(timezone.utc),
-        "sub": str(user.id),  # Ensure sub is a string
+        "sub": str(user.id),
+        "role": user.role,
     }
     secret = SECRET
 
     try:
         token = jwt.encode(payload, secret, algorithm="HS256")
-        print(f"Generated Token: {token}")
         return jsonify({"message": "Login successful.", "token": token})
 
-    except Exception as e:
-        print(f"Error generating token: {e}")
+    except jwt.PyJWTError as _:
         return (
             jsonify({"error": "Token generation failed"}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
-# --- Get urrent User section ---
+# --- Get Current User section ---
 @router.route("/user", methods=["GET"])
 @secure_route
 def get_current_user():
+    """Get the current user by their ID from the database."""
     try:
         user = db.session.query(UserModel).get(g.current_user.id)
-        print(user_serializer.jsonify(user))
         return user_serializer.jsonify(user)
-    except ValidationError as e:
+    except ValidationError as _:
         return {
-            "errors": e.messages,
+            "errors": _.messages,
             "message": "Something went wrong",
         }, HTTPStatus.BAD_REQUEST
-    except Exception as e:
+    except SMTPException as _:
         return {"message": "Something went very wrong"}
 
 
 # --- Display All Users section ---
 @router.route("/users", methods=["GET"])
+@role_required("admin", "superadmin")
 def get_current_users():
+    """Get all users from the database."""
     user = db.session.query(UserModel).all()
-    print(user_serializer.jsonify(user, many=True))
     return user_serializer.jsonify(user, many=True)
 
 
 # --- Display Single User section ---
 @router.route("/user/<int:user_id>", methods=["GET"])
+@role_required("admin", "superadmin")
 def get_single_user(user_id):
+    """Get a single user by their ID from the database."""
     post = db.session.query(UserModel).get(user_id)
     if post is None:
         return jsonify({"message": "user not found"}, HTTPStatus.NOT_FOUND)
@@ -203,8 +220,15 @@ def get_single_user(user_id):
 
 # --- Update User section ---
 @router.route("/user/<int:user_id>", methods=["PUT"])
+@secure_route
 def update_user(user_id):
+    """Update a user by their ID in the database."""
     try:
+        if g.current_user.id != user_id and g.current_user.role not in (
+            "admin",
+            "superadmin",
+        ):
+            return {"message": "Forbidden"}, HTTPStatus.FORBIDDEN
         user = db.session.query(UserModel).get(user_id)
         if user is None:
             return jsonify({"message": "user not found"}, HTTPStatus.NOT_FOUND)
@@ -217,20 +241,21 @@ def update_user(user_id):
         db.session.commit()
         return user_serializer.jsonify(user)
 
-    except ValidationError as e:
+    except ValidationError as _:
         return {
-            "errors": e.messages,
+            "errors": _.messages,
             "message": "Something went wrong",
         }, HTTPStatus.BAD_REQUEST
 
-    except Exception as e:
+    except SMTPException as _:
         return {"message": "Something went very wrong"}, HTTPStatus.BAD_REQUEST
 
 
 # --- Delete User section ---
 @router.route("/user/<int:user_id>", methods=["DELETE"])
-@secure_route
+@role_required("admin", "superadmin")
 def delete_user(user_id):
+    """Delete a user by their ID from the database."""
     user = UserModel.query.get(user_id)
     if not user:
         return jsonify({"message": "user not found"}, HTTPStatus.NOT_FOUND)
@@ -241,8 +266,10 @@ def delete_user(user_id):
 
 # --- Change Password section ---
 @router.route("/change-password", methods=["PUT"])
+@limiter.limit("5 per hour")
 @secure_route
 def change_password():
+    """Change a user's password by their ID in the database."""
     data = request.json
     current_password = data.get("current_password")
     new_password = data.get("new_password")
@@ -291,14 +318,14 @@ def change_password():
 
 
 @router.route("/send-confirmation", methods=["POST"])
+@limiter.limit("3 per hour")
 def send_confirmation():
+    """Send a confirmation email to a user."""
     data = request.json
     email = data.get("email")
     username = data.get("username")
 
     # Validate email format
-    import re
-
     email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     if not email or not re.match(email_pattern, email):
         return jsonify({"error": "Invalid email address"}), 400
@@ -312,6 +339,28 @@ def send_confirmation():
         msg.body = f"Hi {username}, thanks for registering to our website!"
         mail.send(msg)
         return jsonify({"message": "Confirmation email sent."}), 200
-    except Exception as e:
-        print(f"Email error: {e}")
+    except SMTPException as _:
         return jsonify({"error": "Failed to send email"}), 500
+
+
+@router.route("/user/<int:user_id>/role", methods=["PUT"])
+@role_required("superadmin")  # Only superadmins can change roles
+def update_user_role(user_id):
+    """Update a user's role by their ID in the database."""
+    data = request.json
+    new_role = data.get("role")
+
+    if new_role not in ("user", "admin", "superadmin"):
+        return jsonify({"error": "Invalid role"}), HTTPStatus.BAD_REQUEST
+
+    # Prevent superadmin from demoting themselves
+    if g.current_user.id == user_id:
+        return {"error": "Cannot change your own role"}, HTTPStatus.FORBIDDEN
+
+    user = db.session.query(UserModel).get(user_id)
+    if not user:
+        return {"error": "User not found"}, HTTPStatus.NOT_FOUND
+
+    user.role = new_role
+    db.session.commit()
+    return user_serializer.jsonify(user)

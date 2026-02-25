@@ -10,6 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from models import MenusModel
 from serializers.menus_serializer import MenusSerializer
+from middleware.secure_route import role_required
 
 menus_serializer = MenusSerializer()
 router = Blueprint("menus", __name__)
@@ -18,6 +19,7 @@ router = Blueprint("menus", __name__)
 # --- Display Menus section ---
 @router.route("/content/<int:content_id>/menus", methods=["GET"])
 def get_menus(content_id):
+    """Get all menus for a specific content ID."""
     try:
         menus = db.session.query(MenusModel).filter_by(content_id=content_id).all()
         if not menus:
@@ -25,16 +27,18 @@ def get_menus(content_id):
 
         return jsonify(menus_serializer.dump(menus, many=True)), HTTPStatus.OK
 
-    except Exception as e:
+    except ValidationError as _:
         return (
-            jsonify({"message": "Something went wrong", "error": str(e)}),
+            jsonify({"message": "Something went wrong", "error": str(_)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
 # --- Create Menus section ---
 @router.route("/content/<int:content_id>/menus", methods=["POST"])
+@role_required("admin", "superadmin")
 def create_menus(content_id):
+    """Create a new menu for a specific content ID."""
     try:
         menus_dictionary = request.json
         menus_dictionary["content_id"] = content_id
@@ -47,15 +51,15 @@ def create_menus(content_id):
         db.session.commit()
         return jsonify(menus_serializer.dump(menus_model)), HTTPStatus.CREATED
 
-    except ValidationError as e:
+    except ValidationError as _:
         return (
-            jsonify({"error": "Validation error", "details": e.messages}),
+            jsonify({"error": "Validation error", "details": _.messages}),
             HTTPStatus.BAD_REQUEST,
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError as _:
         db.session.rollback()
         return (
-            jsonify({"error": "Database error", "details": str(e)}),
+            jsonify({"error": "Database error", "details": str(_)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
@@ -63,6 +67,7 @@ def create_menus(content_id):
 # --- Update Single Menu section ---
 @router.route("/content/<int:content_id>/menus/<string:menu_type>", methods=["PUT"])
 def update_single_menu(content_id, menu_type):
+    """Update a single menu for a specific content ID and menu type."""
     try:
         data = request.get_json()
         if not data:
@@ -125,7 +130,8 @@ def update_single_menu(content_id, menu_type):
                     return (
                         jsonify(
                             {
-                                "message": "Scheduled time must be at least 30 seconds in the future",
+                                "message": "Scheduled time must be at least"
+                                " 30 seconds in the future",
                                 "scheduled_time_bst": parsed_time_bst.isoformat(),
                                 "current_time_bst": now_bst.replace(
                                     tzinfo=None
@@ -136,14 +142,15 @@ def update_single_menu(content_id, menu_type):
                         HTTPStatus.BAD_REQUEST,
                     )
 
-            except ValueError as e:
+            except ValueError as _:
                 return (
                     jsonify(
                         {
                             "message": "Invalid date format",
-                            "error": str(e),
+                            "error": str(_),
                             "received": scheduled_at,
-                            "expected_format": "BST time like 2025-07-24T17:30:00 or 2025-07-24T17:30",
+                            "expected_format": "BST time like"
+                            " 2025-07-24T17:30:00 or 2025-07-24T17:30",
                         }
                     ),
                     HTTPStatus.BAD_REQUEST,
@@ -164,17 +171,19 @@ def update_single_menu(content_id, menu_type):
         db.session.commit()
         return jsonify({"message": "Menu updated immediately"}), HTTPStatus.OK
 
-    except Exception as e:
+    except ValidationError as _:
         db.session.rollback()
         return (
-            jsonify({"message": "Error", "error": str(e)}),
+            jsonify({"message": "Error", "error": str(_)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
 
 # --- Delete Menu section ---
 @router.route("/content/<int:content_id>/menus/<string:menu_type>", methods=["DELETE"])
+@role_required("admin", "superadmin")
 def delete_menu(content_id, menu_type):
+    """Delete a menu for a specific content ID and menu type."""
     try:
         menu = MenusModel.query.filter_by(
             content_id=content_id, menus_type=menu_type
@@ -190,10 +199,10 @@ def delete_menu(content_id, menu_type):
             HTTPStatus.OK,
         )
 
-    except Exception as e:
+    except ValidationError as _:
         db.session.rollback()
         return (
-            jsonify({"message": "Something went wrong", "error": str(e)}),
+            jsonify({"message": "Something went wrong", "error": str(_)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
@@ -211,7 +220,7 @@ def get_scheduled_updates(content_id):
         scheduled_menus = MenusModel.query.filter(
             MenusModel.content_id == content_id,
             MenusModel.scheduled_at.isnot(None),
-            MenusModel.applied == False,
+            MenusModel.applied.is_(False),
         ).all()
 
         scheduled_updates = []
@@ -250,9 +259,9 @@ def get_scheduled_updates(content_id):
             HTTPStatus.OK,
         )
 
-    except Exception as e:
+    except ValidationError as _:
         return (
-            jsonify({"message": "Error checking scheduled updates", "error": str(e)}),
+            jsonify({"message": "Error checking scheduled updates", "error": str(_)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
@@ -270,7 +279,7 @@ def apply_scheduled_updates_manually(content_id):
         scheduled_menus = MenusModel.query.filter(
             MenusModel.content_id == content_id,
             MenusModel.scheduled_at <= now_bst_naive,  # Database stores naive BST
-            MenusModel.applied == False,
+            MenusModel.applied.is_(False),
             MenusModel.scheduled_at.isnot(None),
         ).all()
 
@@ -322,9 +331,9 @@ def apply_scheduled_updates_manually(content_id):
             HTTPStatus.OK,
         )
 
-    except Exception as e:
+    except ValidationError as _:
         db.session.rollback()
         return (
-            jsonify({"message": "Error applying scheduled updates", "error": str(e)}),
+            jsonify({"message": "Error applying scheduled updates", "error": str(_)}),
             HTTPStatus.INTERNAL_SERVER_ERROR,
         )

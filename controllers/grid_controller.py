@@ -33,9 +33,7 @@ def get_grid(content_id):
 
 
 # --- Delete Carousel section ---
-@router.route(
-    "/content/<int:content_id>/grid/<int:grid_id>", methods=["DELETE"]
-)
+@router.route("/content/<int:content_id>/grid/<int:grid_id>", methods=["DELETE"])
 def delete_grid(content_id, grid_id):
     grid = GridModel.query.get(grid_id)
     if not grid:
@@ -51,9 +49,7 @@ def create_grid(content_id):
     try:
         grid_dictionary = request.json
         grid_dictionary["content_id"] = content_id
-        grid_model = grid_serializer.load(
-            grid_dictionary, session=db.session
-        )
+        grid_model = grid_serializer.load(grid_dictionary, session=db.session)
         db.session.add(grid_model)
         db.session.commit()
         return jsonify(grid_serializer.dump(grid_model)), HTTPStatus.CREATED
@@ -166,14 +162,18 @@ def update_grid(content_id):
                 )
 
             # Update carousel if it exists
-            grid = GridModel.query.filter_by(
-                id=grid_id, content_id=content_id
-            ).first()
+            grid = GridModel.query.filter_by(id=grid_id, content_id=content_id).first()
 
             if grid:
                 grid.grid_url = grid_url
                 updated_grids.append(
-                    {"id": grid.id, "grid_url": grid.grid_url, "position": grid.position, "height": grid.height, "width": grid.width}
+                    {
+                        "id": grid.id,
+                        "grid_url": grid.grid_url,
+                        "position": grid.position,
+                        "height": grid.height,
+                        "width": grid.width,
+                    }
                 )
 
         if not updated_grids:
@@ -222,9 +222,7 @@ def update_single_grid(content_id, grid_id):
                 HTTPStatus.BAD_REQUEST,
             )
 
-        grid = GridModel.query.filter_by(
-            id=grid_id, content_id=content_id
-        ).first()
+        grid = GridModel.query.filter_by(id=grid_id, content_id=content_id).first()
 
         if not grid:
             return (
