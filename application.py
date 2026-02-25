@@ -47,7 +47,7 @@ Talisman(
     force_https=not app.debug,
     content_security_policy=None,
     session_cookie_secure=True,
-    session_cookie_httponly=True,
+    session_cookie_http_only=True,
 )
 
 # Import controllers AFTER db, mail, limiter, etc. are defined to avoid circular imports
