@@ -29,9 +29,11 @@ def debug_scheduler_time():
                 logger.info(
                     f"  is due? {task.scheduled_at <= now if task.scheduled_at else 'N/A'}"
                 )
-                logger.info(
-                    f"  time diff: {(task.scheduled_at - now).total_seconds() if task.scheduled_at else 'N/A'} seconds"
+                diff_sec = (
+                    (task.scheduled_at - now).total_seconds()
+                    if task.scheduled_at else "N/A"
                 )
+                logger.info("  time diff: %s seconds", diff_sec)
                 logger.info("---")
 
             # Use the exact same query as the scheduler

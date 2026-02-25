@@ -48,9 +48,22 @@ with app.app_context():
 
         Content = ContentModel(
             about_title="Welcome to Chez Flo",
-            about_text="A luxury brasserie where culinary artistry meets refined elegance. We craft a unique dining experience by blending classic techniques with modern innovation, using only the finest seasonal ingredients. Whether for an intimate evening or a celebratory feast, our impeccable service and sophisticated ambiance promise to elevate every moment. At Chez Flo, dining is more than a meal—it's a journey of flavors, atmosphere, and unforgettable memories.",
+            about_text=(
+                "A luxury brasserie where culinary artistry meets refined"
+                " elegance. We craft a unique dining experience by blending"
+                " classic techniques with modern innovation, using only the"
+                " finest seasonal ingredients. Whether for an intimate"
+                " evening or a celebratory feast, our impeccable service"
+                " and sophisticated ambiance promise to elevate every"
+                " moment. At Chez Flo, dining is more than a meal—it's a"
+                " journey of flavors, atmosphere, and unforgettable"
+                " memories."
+            ),
             reservation_title="Make a reservation",
-            reservation_text="We have outdoor seating available between noon and 4pm, which can be booked, or requested on arrival.",
+            reservation_text=(
+                "We have outdoor seating available between noon and 4pm,"
+                " which can be booked, or requested on arrival."
+            ),
             breakfast_timing_day_one="Monday-Friday",
             breakfast_timing_hours_one="07.30-11.00",
             breakfast_timing_day_two="Saturday-Sunday",
@@ -62,7 +75,9 @@ with app.app_context():
             dinner_timing_day_one="Monday-Saturday",
             dinner_timing_hours_one="17.00-22.15 (last reservation at 22.00)",
             dinner_timing_day_two="Sunday",
-            dinner_timing_hours_two="Lunch menu will be available until 19.00 (last reservation at 17.00)",
+            dinner_timing_hours_two=(
+                "Lunch menu will be available until 19.00 (last reservation at 17.00)"
+            ),
             reservation_line_one="No availability for your required number of guests?",
             reservation_line_two="Call us to discuss your booking.",
             phone="+44 222 3333 4444",
@@ -76,20 +91,34 @@ with app.app_context():
             contact_opening_hours_two="08:00-23:00",
             contact_opening_day_three="Sunday",
             contact_opening_hours_three="08:00-18:00",
-            map="https://res.cloudinary.com/ded4jhx7i/image/upload/v1737487297/lpgcoxaeygtmizk1ac3z.png",
+            map=(
+                "https://res.cloudinary.com/ded4jhx7i/"
+                "image/upload/v1737487297/lpgcoxaeygtmizk1ac3z.png"
+            ),
         )
         db.session.add(Content)
 
         Carousel_one = CarouselModel(
-            carousel_url="https://media.houseandgarden.co.uk/photos/6548bac4ae920bdd9a97b4d2/16:9/w_2580,c_limit/Restaurant%20Interior%20(Credit%20Ben%20Carpenter).jpg",
+            carousel_url=(
+                "https://media.houseandgarden.co.uk/photos/6548bac4ae920bdd9a97b4d2/"
+                "16:9/w_2580,c_limit/Restaurant%20Interior%20"
+                "(Credit%20Ben%20Carpenter).jpg"
+            ),
             content=Content,
         )
         Carousel_two = CarouselModel(
-            carousel_url="https://www.thisisamber.co.uk/wp-content/uploads/2018/02/160-amb-23-2r-203-1-1600x708.jpg",
+            carousel_url=(
+                "https://www.thisisamber.co.uk/wp-content/uploads/2018/02/"
+                "160-amb-23-2r-203-1-1600x708.jpg"
+            ),
             content=Content,
         )
         Carousel_three = CarouselModel(
-            carousel_url="https://www.claridges.co.uk/siteassets/restaurants--bars/claridges-restaurant/new-2023/claridges-restaurant-hero-1920_720.jpg",
+            carousel_url=(
+                "https://www.claridges.co.uk/siteassets/restaurants--bars/"
+                "claridges-restaurant/new-2023/claridges-restaurant-hero-"
+                "1920_720.jpg"
+            ),
             content=Content,
         )
 
@@ -100,37 +129,56 @@ with app.app_context():
         Breakfast_menus = MenusModel(
             menus_type="breakfast",
             menus_text="Breakfast",
-            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624683/REX_Breakfast_20241119V001_pwlgsy.pdf",
+            menus_url=(
+                "https://res.cloudinary.com/ded4jhx7i/image/upload/"
+                "v1746624683/REX_Breakfast_20241119V001_pwlgsy.pdf"
+            ),
             content=Content,
         )
         Lunch_menus = MenusModel(
             menus_type="lunch",
             menus_text="Lunch",
-            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624897/REX_Lunch_20250422V002_Spring_Menu_ovnzlt.pdf",
+            menus_url=(
+                "https://res.cloudinary.com/ded4jhx7i/image/upload/"
+                "v1746624897/REX_Lunch_20250422V002_Spring_Menu_ovnzlt.pdf"
+            ),
             content=Content,
         )
         Dinner_menus = MenusModel(
             menus_type="dinner",
             menus_text="Dinner",
-            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624894/REX_Dinner_20250422V002_Spring_Menu_ei93vd.pdf",
+            menus_url=(
+                "https://res.cloudinary.com/ded4jhx7i/image/upload/"
+                "v1746624894/REX_Dinner_20250422V002_Spring_Menu_ei93vd.pdf"
+            ),
             content=Content,
         )
         Desserts_menus = MenusModel(
             menus_type="desserts",
             menus_text="Desserts",
-            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624762/desserts_lsacmw_jppkyk.pdf",
+            menus_url=(
+                "https://res.cloudinary.com/ded4jhx7i/image/upload/"
+                "v1746624762/desserts_lsacmw_jppkyk.pdf"
+            ),
             content=Content,
         )
         Winelist_menus = MenusModel(
             menus_type="winelist",
             menus_text="Winelist",
-            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624798/Swan-Wine-List_oevrzp.pdf",
+            menus_url=(
+                "https://res.cloudinary.com/ded4jhx7i/image/upload/"
+                "v1746624798/Swan-Wine-List_oevrzp.pdf"
+            ),
             content=Content,
         )
         Cocktail_menus = MenusModel(
             menus_type="Cocktail",
             menus_text="Cocktail",
-            menus_url="https://res.cloudinary.com/ded4jhx7i/image/upload/v1746624674/The-Savoy-American-Bar_-American-Bar-Liquid-Moments_1_kjlreb.pdf",
+            menus_url=(
+                "https://res.cloudinary.com/ded4jhx7i/image/upload/"
+                "v1746624674/The-Savoy-American-Bar_-American-Bar-Liquid-"
+                "Moments_1_kjlreb.pdf"
+            ),
             content=Content,
         )
 
@@ -142,35 +190,56 @@ with app.app_context():
         db.session.add(Cocktail_menus)
 
         Grid_one = GridModel(
-            grid_url="https://images.unsplash.com/photo-1432462770865-65b70566d673?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop&amp;w=1950&amp;q=80",
+            grid_url=(
+                "https://images.unsplash.com/photo-1432462770865-65b70566d673?"
+                "ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"
+                "&amp;ixlib=rb-1.2.1&amp;auto=format&amp;fit=crop"
+                "&amp;w=1950&amp;q=80"
+            ),
             content=Content,
             position=1,
             width=1020,
             height=680,
         )
         Grid_two = GridModel(
-            grid_url="https://images.unsplash.com/photo-1629367494173-c78a56567877?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=927&amp;q=80",
+            grid_url=(
+                "https://images.unsplash.com/photo-1629367494173-c78a56567877?"
+                "ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"
+                "&amp;auto=format&amp;fit=crop&amp;w=927&amp;q=80"
+            ),
             content=Content,
             position=2,
             width=446,
             height=794,
         )
         Grid_three = GridModel(
-            grid_url="https://images.unsplash.com/photo-1493246507139-91e8fad9978e?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=2940&amp;q=80",
+            grid_url=(
+                "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?"
+                "ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"
+                "&amp;auto=format&amp;fit=crop&amp;w=2940&amp;q=80"
+            ),
             content=Content,
             position=3,
             width=1020,
             height=680,
         )
         Grid_four = GridModel(
-            grid_url="https://images.unsplash.com/photo-1552960562-daf630e9278b?ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=687&amp;q=80",
+            grid_url=(
+                "https://images.unsplash.com/photo-1552960562-daf630e9278b?"
+                "ixlib=rb-4.0.3&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"
+                "&amp;auto=format&amp;fit=crop&amp;w=687&amp;q=80"
+            ),
             content=Content,
             position=4,
             width=529,
             height=794,
         )
         Grid_five = GridModel(
-            grid_url="https://images.unsplash.com/photo-1540553016722-983e48a2cd10?ixlib=rb-1.2.1&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&amp;auto=format&amp;fit=crop&amp;w=800&amp;q=80",
+            grid_url=(
+                "https://images.unsplash.com/photo-1540553016722-983e48a2cd10?"
+                "ixlib=rb-1.2.1&amp;ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8"
+                "&amp;auto=format&amp;fit=crop&amp;w=800&amp;q=80"
+            ),
             content=Content,
             position=5,
             width=1019,

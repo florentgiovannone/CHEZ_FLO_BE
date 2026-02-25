@@ -46,11 +46,16 @@ def apply_scheduled_updates():
                     if time_diff > 0:
                         minutes_left = int(time_diff / 60)
                         logger.info(
-                            f"  - {menu.menus_type} menu: due in {minutes_left} minutes ({menu.scheduled_at.strftime('%H:%M BST')})"
+                            "  - %s menu: due in %s minutes (%s)",
+                            menu.menus_type,
+                            minutes_left,
+                            menu.scheduled_at.strftime("%H:%M BST"),
                         )
                     else:
                         logger.info(
-                            f"  - {menu.menus_type} menu: DUE NOW ({menu.scheduled_at.strftime('%H:%M BST')})"
+                            "  - %s menu: DUE NOW (%s)",
+                            menu.menus_type,
+                            menu.scheduled_at.strftime("%H:%M BST"),
                         )
             else:
                 logger.info("📋 No scheduled updates pending")
