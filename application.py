@@ -13,17 +13,49 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_talisman import Talisman
 
 from config.environment import db_URI
-from controllers import users_controller
-from controllers import content_controller
-from controllers import carousels_controller
-from controllers import menus_controller
-from controllers import grid_controller
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = db_URI
+CORS(app, origins=["https://chezflodemo.netlify.app/", "https://chezflo.vercel.app"])
+db = SQLAlchemy(app)
+marshy = Marshmallow(app)
+bcrypt = Bcrypt(app)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
+
+# Mail configuration
+app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
+app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
+app.config["MAIL_USE_TLS"] = True
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+if not app.config["MAIL_USERNAME"]:
+    raise ValueError("MAIL_USERNAME environment variable must be set")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+
+mail = Mail(app)
+Talisman(
+    app,
+    force_https=not app.debug,
+    content_security_policy=None,
+    session_cookie_secure=True,
+    session_cookie_httponly=True,
+)
+
+# Import controllers AFTER db, mail, limiter, etc. are defined to avoid circular imports
+from controllers import users_controller
+from controllers import content_controller
+from controllers import carousels_controller
+from controllers import menus_controller
+from controllers import grid_controller
 
 
 @app.before_request
@@ -75,36 +107,6 @@ def handle_exception(e):
     logger.error("Unhandled exception: %s", e)
     return jsonify({"error": "Something went wrong"}), 500
 
-
-app.config["SQLALCHEMY_DATABASE_URI"] = db_URI
-CORS(app, origins=["https://chezflodemo.netlify.app/", "https://chezflo.vercel.app"])
-db = SQLAlchemy(app)
-marshy = Marshmallow(app)
-bcrypt = Bcrypt(app)
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://",
-)
-
-# Mail configuration
-app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
-app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
-app.config["MAIL_USE_TLS"] = True
-app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
-if not app.config["MAIL_USERNAME"]:
-    raise ValueError("MAIL_USERNAME environment variable must be set")
-app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
-
-mail = Mail(app)
-Talisman(
-    app,
-    force_https=not app.debug,  # Force HTTPS in production, skip locally
-    content_security_policy=None,  # Set to None since you're an API, not serving HTML
-    session_cookie_secure=True,
-    session_cookie_httponly=True,
-)
 
 app.register_blueprint(users_controller.router, url_prefix="/api")
 app.register_blueprint(content_controller.router, url_prefix="/api")
