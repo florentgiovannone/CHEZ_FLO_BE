@@ -13,7 +13,10 @@ else:
 
 SECRET = os.getenv("SECRET")
 if not SECRET:
-    raise ValueError("SECRET environment variable must be set")
+    raise ValueError(
+        "SECRET environment variable must be set (e.g. in Railway: Project → "
+        "Variables → add SECRET). Used for JWT signing and session security."
+    )
 
 if db_URI and db_URI.startswith("postgres://"):
     db_URI = db_URI.replace("postgres://", "postgresql://", 1)

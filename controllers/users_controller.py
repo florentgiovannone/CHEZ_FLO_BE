@@ -330,6 +330,9 @@ def send_confirmation():
     if not email or not re.match(email_pattern, email):
         return jsonify({"error": "Invalid email address"}), 400
 
+    if not app.config.get("MAIL_USERNAME"):
+        return jsonify({"error": "Email is not configured"}), 503
+
     try:
         msg = Message(
             subject="Confirmation Email",

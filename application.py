@@ -32,14 +32,12 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 
-# Mail configuration
-app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
-app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
+# Mail configuration (optional: app starts without it; mail routes will fail until set)
+app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "localhost")
+app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", "25"))
 app.config["MAIL_USE_TLS"] = True
-app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
-if not app.config["MAIL_USERNAME"]:
-    raise ValueError("MAIL_USERNAME environment variable must be set")
-app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME") or ""
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD") or ""
 
 mail = Mail(app)
 Talisman(
