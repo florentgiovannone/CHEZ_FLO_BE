@@ -1,6 +1,6 @@
 """Seed script to populate the database with initial data."""
 import os
-from app import app, db
+from application import app, db
 from models.users_model import UserModel
 from models.content_model import ContentModel
 from models.carousel_model import CarouselModel

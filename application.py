@@ -21,7 +21,17 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_URI
-CORS(app, origins=["https://chezflodemo.netlify.app/", "https://chezflo.vercel.app"])
+CORS(
+    app,
+    origins=[
+        "https://chezflodemo.netlify.app",
+        "https://chezflodemo.netlify.app/",
+        "https://chezflo.vercel.app",
+        "https://chezflo.vercel.app/",
+    ],
+    allow_headers=["Content-Type", "Authorization"],
+    supports_credentials=True,
+)
 db = SQLAlchemy(app)
 marshy = Marshmallow(app)
 bcrypt = Bcrypt(app)
