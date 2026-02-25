@@ -1,5 +1,7 @@
 """Seed script to populate the database with initial data."""
+
 import os
+from sqlalchemy.exc import SQLAlchemyError
 from application import app, db
 from models.users_model import UserModel
 from models.content_model import ContentModel
@@ -263,5 +265,5 @@ with app.app_context():
         db.session.commit()
         print("seeded!")
 
-    except Exception as e:
+    except SQLAlchemyError as e:
         print(e)
