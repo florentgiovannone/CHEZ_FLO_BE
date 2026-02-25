@@ -3,7 +3,7 @@ Database migration script to add scheduled fields to menus table
 Run this on production to add the new scheduled update fields
 """
 
-from app import app, db
+from application import app, db
 import logging
 
 # Configure logging

@@ -1,6 +1,6 @@
 """User model module defining the UserModel for authentication and user management."""
 from sqlalchemy.ext.hybrid import hybrid_property
-from app import db, bcrypt
+from application import db, bcrypt
 
 
 class UserModel(db.Model):

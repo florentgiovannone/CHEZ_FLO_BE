@@ -1,7 +1,7 @@
 import time
 import logging
 from datetime import datetime, timezone, timedelta
-from app import app, db
+from application import app, db
 from models.menus_model import MenusModel
 
 # Configure logging

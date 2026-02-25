@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
-from app import db
+from application import db
 from models.grid_model import GridModel
 from serializers.grid_serializer import GridSerializer
 from sqlalchemy.exc import SQLAlchemyError

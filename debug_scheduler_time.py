@@ -1,4 +1,4 @@
-from app import app, db
+from application import app, db
 from models.menus_model import MenusModel
 from datetime import datetime
 import logging

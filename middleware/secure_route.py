@@ -6,7 +6,7 @@ from http import HTTPStatus
 import jwt
 from flask import request, g
 
-from app import db
+from application import db
 from config.environment import SECRET
 from models.users_model import UserModel
 

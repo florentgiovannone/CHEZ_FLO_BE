@@ -1,7 +1,7 @@
 """User serializer module defining the UserSerializer for user authentication and management."""
 import re
 from marshmallow import fields, ValidationError
-from app import marshy
+from application import marshy
 from models.users_model import UserModel
 
 

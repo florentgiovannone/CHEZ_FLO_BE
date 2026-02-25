@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from flask import Blueprint, request, jsonify
 from marshmallow.exceptions import ValidationError
-from app import db
+from application import db
 from models import ContentModel
 from serializers.content_serializer import ContentSerializer
 from datetime import datetime, timedelta, timezone

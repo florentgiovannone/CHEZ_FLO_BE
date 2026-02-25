@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from flask import Blueprint, request, jsonify
 from marshmallow import ValidationError
-from app import db
+from application import db
 from models import CarouselModel
 from serializers.carousel_serializer import CarouselSerializer
 from sqlalchemy.exc import SQLAlchemyError

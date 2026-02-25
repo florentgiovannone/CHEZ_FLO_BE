@@ -1,4 +1,4 @@
-from app import db
+from application import db
 from models.content_model import ContentModel
 from models.menus_model import MenusModel
 from models.carousel_model import CarouselModel

@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 from marshmallow.exceptions import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db
+from application import db
 from models import MenusModel
 from serializers.menus_serializer import MenusSerializer
 from middleware.secure_route import role_required

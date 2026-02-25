@@ -8,7 +8,7 @@ import jwt
 from flask import Blueprint, request, jsonify, g
 from flask_mail import Message
 from marshmallow.exceptions import ValidationError
-from app import db, app, mail, limiter
+from application import db, app, mail, limiter
 from config.environment import SECRET
 from middleware.secure_route import secure_route, role_required
 from models.users_model import UserModel
